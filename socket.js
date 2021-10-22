@@ -5,8 +5,7 @@ const colors = require('colors')
 const util = require('util')
 /**@type {socket.Server} */
 const io = socket()
-var rooms = [
-]
+var rooms = []
 
 const getRoomCount = (id) => {
   if (io.sockets.adapter.rooms.get(id))
@@ -20,14 +19,26 @@ io.on('connection', (socket) => {
     var u = URL.parse(socket.handshake.headers.referer)
     var roomId = u.path.split('/')[2]
     if (roomId.length !== 8) return
-    if(!rooms.find(r => r.id == roomId)) {
+    if (!rooms.find((r) => r.id == roomId)) {
       socket.emit('room-not-found')
     }
     socket.join(roomId)
     socket.nickname = nickname
     console.log(nickname)
     var sIds = Array.from(io.sockets.adapter.rooms.get(roomId).values())
-    io.in(roomId).emit('joinedRoom', sIds)
+    var list = []
+    sIds.map((sId) => {
+      var user = {
+        id: sId,
+        nickname: io.sockets.sockets.get(sId).nickname,
+      }
+      list.push(user)
+    })
+    list.sort((a, b) =>
+      a.nickname.toLowerCase() > b.nickname.toLowerCase() ? 1 : b.nickname.toLowerCase() > a.nickname.toLowerCase() ? -1 : 0
+    )
+
+    io.in(roomId).emit('joinedRoom', list)
     socket.emit('selfJoinedRoom')
     console.log(socket.id.bgYellow + ' joined ' + roomId.bgGreen)
   })
@@ -68,7 +79,7 @@ io.on('connection', (socket) => {
       console.log('compare: ' + s2.id)
       s2.emit('get-document-field', id)
     } else {
-      s2.emit('load-document-field', id)
+      s2.emit('load-document-field', null, id)
       if (id == 'title') {
         let ts = Date.now()
 
@@ -91,6 +102,21 @@ io.on('connection', (socket) => {
           'title'
         )
       }
+      if (id == socket.id) {
+        s2.emit(
+          'receive-changes',
+          {
+            ops: [
+              {
+                insert: socket.nickname,
+              },
+              { attributes: { header: 2 }, insert: '\n' },
+            ],
+          },
+          socket.nickname,
+          socket.id
+        )
+      }
     }
   })
 
@@ -100,7 +126,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnecting', () => {
     let roomId = Array.from(socket.rooms)[1]
-    if(roomId === undefined) return
+    if (roomId === undefined) return
     console.log(socket.id.bgYellow + ' left ' + roomId.bgGreen)
     socket.leave(roomId)
     if (io.sockets.adapter.rooms.get(roomId) == undefined) {
@@ -116,7 +142,19 @@ io.on('connection', (socket) => {
       return
     }
     var sIds = Array.from(io.sockets.adapter.rooms.get(roomId).values())
-    io.in(roomId).emit('joinedRoom', sIds)
+    var list = []
+    sIds.map((sId) => {
+      var user = {
+        id: sId,
+        nickname: io.sockets.sockets.get(sId).nickname,
+      }
+      list.push(user)
+    })
+    list.sort((a, b) =>
+      a.nickname.toLowerCase() > b.nickname.toLowerCase() ? 1 : b.nickname.toLowerCase() > a.nickname.toLowerCase() ? -1 : 0
+    )
+
+    io.in(roomId).emit('joinedRoom', list)
   })
 
   socket.on('disconnect', (reason) => {

@@ -17,12 +17,14 @@ const generateCode = () => {
 router.get('/', function (req, res, next) {
   var data = []
   rooms.forEach((room) => {
+    console.log(room)
     var r = {
       id: room.id,
       name: room.name,
       users: getRoomCount(room.id),
       password: room.password.length > 0 ? 'Yes' : 'No',
       owner: room.owner,
+      maxusers: room.maxusers
     }
     data.push(r)
   })
