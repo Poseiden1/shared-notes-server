@@ -33,7 +33,7 @@ server.on('listening', onListening)
  * Socket Server
  */
  var {io} = require('../socket')
- io.listen(server)
+ io.listen(server, {maxHttpBufferSize: 1e9})
  
 
 /**

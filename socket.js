@@ -6,18 +6,6 @@ const util = require('util')
 /**@type {socket.Server} */
 const io = socket()
 var rooms = [
-  {
-    id: 1,
-    name: 'samsepi0l',
-    password: 'test',
-    owner: 'Raman',
-  },
-  {
-    id: 2,
-    name: 'ejkel',
-    password: '',
-    owner: 'Raman',
-  },
 ]
 
 const getRoomCount = (id) => {
@@ -131,8 +119,9 @@ io.on('connection', (socket) => {
     io.in(roomId).emit('joinedRoom', sIds)
   })
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
     console.log(socket.id.bgYellow + ' disconnected!')
+    console.log(reason)
   })
 })
 
