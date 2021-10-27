@@ -1,8 +1,8 @@
 var express = require('express')
 var router = express.Router()
 var crypto = require('crypto')
-const { getRoomCount, rooms } = require('../socket')
-
+const { getRoomCount, rooms, quills } = require('../socket')
+const Delta = require('../dist/Delta')
 
 const generateCode = () => {
   return new Promise((resolve, reject) => {
@@ -37,6 +37,7 @@ router.post('/create', (req, res) => {
   generateCode().then((id) => {
     formData.id = id
     rooms.push(formData)
+
     return res.status(200).json({
       success: true,
       redirectUrl: `/rooms/${formData.id}`,

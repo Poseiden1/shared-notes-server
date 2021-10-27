@@ -3,9 +3,12 @@ const www = require('./bin/www')
 const URL = require('url')
 const colors = require('colors')
 const util = require('util')
+const Delta = require('./dist/Delta')
 /**@type {socket.Server} */
 const io = socket()
 var rooms = []
+/**@type {[Delta]} */
+var quills = []
 
 const getRoomCount = (id) => {
   if (io.sockets.adapter.rooms.get(id))
@@ -35,7 +38,11 @@ io.on('connection', (socket) => {
       list.push(user)
     })
     list.sort((a, b) =>
-      a.nickname.toLowerCase() > b.nickname.toLowerCase() ? 1 : b.nickname.toLowerCase() > a.nickname.toLowerCase() ? -1 : 0
+      a.nickname.toLowerCase() > b.nickname.toLowerCase()
+        ? 1
+        : b.nickname.toLowerCase() > a.nickname.toLowerCase()
+        ? -1
+        : 0
     )
 
     io.in(roomId).emit('joinedRoom', list)
@@ -44,12 +51,14 @@ io.on('connection', (socket) => {
   })
 
   socket.on('send-changes', (delta, name, id) => {
+    var roomId = Array.from(socket.rooms)[1]
     console.log(
       util.inspect(delta, { showHidden: false, depth: null, colors: true })
     )
-    socket
-      .to(Array.from(socket.rooms)[1])
-      .emit('receive-changes', delta, name, id)
+    const newDelta = quills[id].compose(delta)
+    quills[id] = newDelta
+
+    socket.to(roomId).emit('receive-changes-' + id, delta, name, id)
   })
 
   socket.on('get-document-field', (id) => {
@@ -57,55 +66,57 @@ io.on('connection', (socket) => {
     console.log('Listen:'.bgMagenta + ' ' + 'get-document-field'.bgCyan)
     s1 = socket
     var roomId = Array.from(socket.rooms)[1]
-    var room =   rooms.filter(r => {
+    var room = rooms.filter((r) => {
       return r.id === roomId
     })
     s2Id = io.sockets.adapter.rooms.get(roomId).values().next().value
     s2 = io.sockets.sockets.get(s2Id)
     if (s1.id == id) {
+      quills[id] = new Delta()
+      var delta = {
+        ops: [
+          {
+            insert: socket.nickname,
+          },
+          { attributes: { header: 2 }, insert: '\n' },
+        ],
+      }
+      var newDelta = quills[id].compose(delta)
+      quills[id] = newDelta
       io.in(roomId).emit(
-        'receive-changes',
-        {
-          ops: [
-            {
-              insert: socket.nickname,
-            },
-            { attributes: { header: 2 }, insert: '\n' },
-          ],
-        },
+        'receive-changes-' + socket.id,
+        delta,
         socket.nickname,
         socket.id
       )
     }
     if (s2.id != socket.id) {
-      console.log('compare: ' + s2.id)
-      s2.emit('get-document-field', id)
+      s1.emit('load-document-field-' + id, quills[id], id)
     } else {
-      s2.emit('load-document-field', null, id)
+      s2.emit('load-document-field-' + id, null, id)
       if (id == 'title') {
+        quills[id] = new Delta()
         let ts = Date.now()
         let date_ob = new Date(ts)
         let date = date_ob.getDate()
         let month = date_ob.getMonth() + 1
         let year = date_ob.getFullYear()
-        s2.emit(
-          'receive-changes',
-          {
-            ops: [
-              {
-                insert:
-                  room[0].name + ' ' + year + '-' + month + '-' + date,
-              },
-              { attributes: { header: 1 }, insert: '\n' },
-            ],
-          },
-          s2.nickname,
-          'title'
-        )
+        var delta = {
+          ops: [
+            {
+              insert: room[0].name + ' ' + year + '-' + month + '-' + date,
+            },
+            { attributes: { header: 1 }, insert: '\n' },
+          ],
+        }
+        var newDelta = quills[id].compose(delta)
+        quills[id] = newDelta
+
+        s2.emit('receive-changes-title', delta, s2.nickname, 'title')
       }
       if (id == socket.id) {
-        s2.emit(
-          'receive-changes',
+        socket.emit(
+          'receive-changes-' + socket.id,
           {
             ops: [
               {
@@ -122,7 +133,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('load-document-field', (data, id) => {
-    s1.emit('load-document-field', data, id)
+    s1.emit('load-document-field-' + id, data, id)
   })
 
   socket.on('disconnecting', () => {
@@ -152,7 +163,11 @@ io.on('connection', (socket) => {
       list.push(user)
     })
     list.sort((a, b) =>
-      a.nickname.toLowerCase() > b.nickname.toLowerCase() ? 1 : b.nickname.toLowerCase() > a.nickname.toLowerCase() ? -1 : 0
+      a.nickname.toLowerCase() > b.nickname.toLowerCase()
+        ? 1
+        : b.nickname.toLowerCase() > a.nickname.toLowerCase()
+        ? -1
+        : 0
     )
 
     io.in(roomId).emit('joinedRoom', list)
@@ -167,5 +182,6 @@ io.on('connection', (socket) => {
 module.exports = {
   getRoomCount: getRoomCount,
   rooms: rooms,
+  quills: quills,
   io: io,
 }
