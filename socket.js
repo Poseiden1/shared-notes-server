@@ -57,7 +57,9 @@ io.on('connection', (socket) => {
     console.log('Listen:'.bgMagenta + ' ' + 'get-document-field'.bgCyan)
     s1 = socket
     var roomId = Array.from(socket.rooms)[1]
-
+    var room =   rooms.filter(r => {
+      return r.id === roomId
+    })
     s2Id = io.sockets.adapter.rooms.get(roomId).values().next().value
     s2 = io.sockets.sockets.get(s2Id)
     if (s1.id == id) {
@@ -82,7 +84,6 @@ io.on('connection', (socket) => {
       s2.emit('load-document-field', null, id)
       if (id == 'title') {
         let ts = Date.now()
-
         let date_ob = new Date(ts)
         let date = date_ob.getDate()
         let month = date_ob.getMonth() + 1
@@ -93,7 +94,7 @@ io.on('connection', (socket) => {
             ops: [
               {
                 insert:
-                  'Shared Notes (Alpha) ' + year + '-' + month + '-' + date,
+                  room[0].name + ' ' + year + '-' + month + '-' + date,
               },
               { attributes: { header: 1 }, insert: '\n' },
             ],
