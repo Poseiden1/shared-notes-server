@@ -36,6 +36,12 @@ router.post('/create', (req, res) => {
   var formData = req.body
   generateCode().then((id) => {
     formData.id = id
+    if(formData.owner === 'Unknown') {
+      return res.status(200).json({
+        success: false,
+        redirectUrl: `/rooms/${formData.id}`,
+      })
+    }
     rooms.push(formData)
 
     return res.status(200).json({

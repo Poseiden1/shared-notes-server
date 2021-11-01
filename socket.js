@@ -136,6 +136,12 @@ io.on('connection', (socket) => {
     s1.emit('load-document-field-' + id, data, id)
   })
 
+  socket.on('save-document-field', (data, id) => {
+    let roomId = Array.from(socket.rooms)[1]
+    console.log("save-document-field" + roomId)
+    io.to(roomId).emit('load-document-field-' + id, data, id)
+  })
+
   socket.on('disconnecting', () => {
     let roomId = Array.from(socket.rooms)[1]
     if (roomId === undefined) return
