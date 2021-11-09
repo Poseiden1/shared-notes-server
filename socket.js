@@ -93,6 +93,7 @@ io.on('connection', (socket) => {
     if (s2.id != socket.id) {
       s1.emit('load-document-field-' + id, quills[id], id)
     } else {
+      if(rooms.length < 1) return
       s2.emit('load-document-field-' + id, null, id)
       if (id == 'title') {
         quills[id] = new Delta()
